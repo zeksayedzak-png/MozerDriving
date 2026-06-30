@@ -1,97 +1,119 @@
--- إنشاء الواجهة (GUI)
+-- إعدادات الواجهة
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local TeleportBtn = Instance.new("TextButton")
+local AutoBtn = Instance.new("TextButton")
+local StatusLabel = Instance.new("TextLabel") -- لعرض حالة البحث
 local UICorner = Instance.new("UICorner")
 
--- إعدادات الواجهة
-ScreenGui.Name = "TeleportGui"
-ScreenGui.Parent = game.CoreGui -- وضعها في CoreGui لضمان عدم اختفائها عند الموت
+ScreenGui.Name = "UltraTP"
+ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
--- إعدادات الإطار (الذي ستحركه بإصبعك)
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-MainFrame.BackgroundTransparency = 0.2
-MainFrame.Position = UDim2.new(0.5, -50, 0.5, -25) -- في منتصف الشاشة
-MainFrame.Size = UDim2.new(0, 100, 0, 50)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.Position = UDim2.new(0.5, -75, 0.4, 0)
+MainFrame.Size = UDim2.new(0, 150, 0, 100)
 MainFrame.Active = true
-MainFrame.Draggable = true -- تفعيل خاصية السحب للهواتف
+MainFrame.Draggable = true -- التحريك بالإصبع
 
--- إضافة زوايا دائرية للجمالية
-UICorner.CornerRadius = UDim.new(0, 10)
 UICorner.Parent = MainFrame
 
--- إعدادات الزر
-TeleportBtn.Name = "TeleportBtn"
+-- نص الحالة (Status)
+StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Status: Idle"
+StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.TextSize = 12
+StatusLabel.Parent = MainFrame
+
+-- إعداد الأزرار
+TeleportBtn.Size = UDim2.new(0, 130, 0, 30)
+TeleportBtn.Position = UDim2.new(0, 10, 0, 25)
+TeleportBtn.Text = "Force TP"
 TeleportBtn.Parent = MainFrame
-TeleportBtn.BackgroundColor3 = Color3.fromRGB(218, 133, 65) -- نفس لون الـ RingGlow الذي ذكرته
-TeleportBtn.Size = UDim2.new(1, 0, 1, 0)
-TeleportBtn.Font = Enum.Font.SourceSansBold
-TeleportBtn.Text = "TP TO RING"
-TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TeleportBtn.TextSize = 18.0
 
-local UICornerBtn = Instance.new("UICorner")
-UICornerBtn.CornerRadius = UDim.new(0, 10)
-UICornerBtn.Parent = TeleportBtn
+AutoBtn.Size = UDim2.new(0, 130, 0, 30)
+AutoBtn.Position = UDim2.new(0, 10, 0, 60)
+AutoBtn.Text = "Auto: OFF"
+AutoBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+AutoBtn.Parent = MainFrame
 
--- دالة الانتقال (Teleport Logic)
-TeleportBtn.MouseButton1Click:Connect(function()
-    local targetPath = workspace:FindFirstChild("DeliveryLocationEffects")
-    
-    if targetPath and targetPath:FindFirstChild("RingGlow") then
-        local ring = targetPath.RingGlow
-        local player = game.Players.LocalPlayer
-        
-        if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-            -- الانتقال إلى موقع الجزء + 7 وحدات للأعلى (مسافة آمنة)
-            local targetPos = ring.CFrame + Vector3.new(0, 7, 0)
-            player.Character.HumanoidRootPart.CFrame = targetPos
-        end
-    else
-        -- إذا لم يجد المنطقة (ربما لم تظهر بعد)
-        TeleportBtn.Text = "Not Found!"
-        wait(1)
-        TeleportBtn.Text = "TP TO RING"
+local function getRing()
+    -- البحث في كل الـ Workspace حتى لو كان مخفي بسبب المسافة
+    local folder = workspace:FindFirstChild("DeliveryLocationEffects")
+    if folder then
+        local ring = folder:FindFirstChild("RingGlow")
+        if ring then return ring end
     end
-end)
-
--- كود إضافي لجعل السحب يعمل بسلاسة أكبر على الهواتف (اختياري)
-local UserInputService = game:GetService("UserInputService")
-local dragging
-local dragInput
-local dragStart
-local startPos
-
-local function update(input)
-    local delta = input.Position - dragStart
-    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    return nil
 end
 
-MainFrame.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = MainFrame.Position
+local function teleportSafely()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+
+    StatusLabel.Text = "Searching..."
+    
+    -- محاولة إيجاد الهدف
+    local target = getRing()
+    
+    if target then
+        -- إذا وجد الهدف، انتقل فوراً
+        character.HumanoidRootPart.CFrame = target.CFrame + Vector3.new(0, 7, 0)
+        StatusLabel.Text = "Success!"
+    else
+        -- الخدعة: إذا لم يجد الهدف، نقوم بعمل "انتظار" حتى يظهر في الـ Workspace
+        StatusLabel.Text = "Waiting for Spawn..."
         
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
+        -- سنقوم بمراقبة المجلد مباشرة
+        local folder = workspace:WaitForChild("DeliveryLocationEffects", 5)
+        if folder then
+            local ring = folder:WaitForChild("RingGlow", 5)
+            if ring then
+                character.HumanoidRootPart.CFrame = ring.CFrame + Vector3.new(0, 7, 0)
+                StatusLabel.Text = "Success (Delayed)!"
+                return
             end
-        end)
+        end
+        StatusLabel.Text = "Not Found in Map!"
+    end
+end
+
+-- زر النقل اليدوي
+TeleportBtn.MouseButton1Click:Connect(teleportSafely)
+
+-- نظام الـ Auto المطور
+_G.AutoMode = false
+AutoBtn.MouseButton1Click:Connect(function()
+    _G.AutoMode = not _G.AutoMode
+    if _G.AutoMode then
+        AutoBtn.Text = "Auto: ON"
+        AutoBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    else
+        AutoBtn.Text = "Auto: OFF"
+        AutoBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
     end
 end)
 
-MainFrame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
+-- حلقة المراقبة المستمرة (Background Loop)
+task.spawn(function()
+    while task.wait(0.1) do
+        if _G.AutoMode then
+            local ring = getRing()
+            if ring then
+                local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if hrp then
+                    -- حساب المسافة: إذا كان بعيداً جداً، انتقل إليه
+                    local dist = (hrp.Position - ring.Position).Magnitude
+                    if dist > 15 then
+                        hrp.CFrame = ring.CFrame + Vector3.new(0, 7, 0)
+                        StatusLabel.Text = "Auto TP Done!"
+                    end
+                end
+            end
+        end
     end
 end)
