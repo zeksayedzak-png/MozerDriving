@@ -3,22 +3,22 @@ local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 local TeleportBtn = Instance.new("TextButton")
+local NewLocBtn = Instance.new("TextButton") -- الزر الجديد
 local ResetBtn = Instance.new("TextButton")
 local UICorner = Instance.new("UICorner")
 
 -- إعدادات الواجهة
-ScreenGui.Parent = game.CoreGui -- وضع السكريبت في مكان لا يحذف عند الموت
-ScreenGui.Name = "ATMScript"
+ScreenGui.Parent = game.CoreGui
+ScreenGui.Name = "ATMScript_Updated"
 
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
 MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-MainFrame.Position = UDim2.new(0.5, -100, 0.5, -75) -- في منتصف الشاشة
-MainFrame.Size = UDim2.new(0, 200, 0, 150)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -90) -- تعديل الموقع قليلاً
+MainFrame.Size = UDim2.new(0, 200, 0, 190) -- زيادة الطول ليستوعب الزر الجديد
 MainFrame.Active = true
-MainFrame.Draggable = true -- تفعيل السحب (يعمل على معظم المحقنات)
+MainFrame.Draggable = true 
 
--- زوايا مستديرة
 local corner = Instance.new("UICorner", MainFrame)
 corner.CornerRadius = UDim.new(0, 10)
 
@@ -28,84 +28,99 @@ Title.Parent = MainFrame
 Title.BackgroundTransparency = 1
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Font = Enum.Font.GothamBold
-Title.Text = "ATM"
+Title.Text = "ATM HUB"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 20
 
--- زر الانتقال (Teleport)
+-- زر الـ ATM (الأصلي)
 TeleportBtn.Name = "TeleportBtn"
 TeleportBtn.Parent = MainFrame
 TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-TeleportBtn.Position = UDim2.new(0.1, 0, 0.35, 0)
-TeleportBtn.Size = UDim2.new(0.8, 0, 0.3, 0)
+TeleportBtn.Position = UDim2.new(0.1, 0, 0.25, 0)
+TeleportBtn.Size = UDim2.new(0.8, 0, 0.2, 0)
 TeleportBtn.Font = Enum.Font.Gotham
 TeleportBtn.Text = "Go to next ATM"
 TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TeleportBtn.TextSize = 16
+TeleportBtn.TextSize = 14
 Instance.new("UICorner", TeleportBtn)
 
--- زر الريسيت (Reset)
+-- [[ الزر الجديد: الانتقال للإحداثيات المحددة ]]
+NewLocBtn.Name = "NewLocBtn"
+NewLocBtn.Parent = MainFrame
+NewLocBtn.BackgroundColor3 = Color3.fromRGB(46, 204, 113) -- لون أخضر مريح
+NewLocBtn.Position = UDim2.new(0.1, 0, 0.5, 0)
+NewLocBtn.Size = UDim2.new(0.8, 0, 0.2, 0)
+NewLocBtn.Font = Enum.Font.Gotham
+NewLocBtn.Text = "Teleport to Pos"
+NewLocBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NewLocBtn.TextSize = 14
+Instance.new("UICorner", NewLocBtn)
+
+-- زر الريسيت (الأصلي)
 ResetBtn.Name = "ResetBtn"
 ResetBtn.Parent = MainFrame
 ResetBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
 ResetBtn.Position = UDim2.new(0.3, 0, 0.75, 0)
 ResetBtn.Size = UDim2.new(0.4, 0, 0.15, 0)
 ResetBtn.Font = Enum.Font.Gotham
-ResetBtn.Text = "Reset"
+ResetBtn.Text = "Reset Cache"
 ResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ResetBtn.TextSize = 12
 Instance.new("UICorner", ResetBtn)
 
--- المنطق البرمجي (Logic)
-local visitedATMs = {} -- "عقل" السكريبت لحفظ الـ ATMs
+-- المنطق البرمجي
+local visitedATMs = {}
 
+-- وظيفة الانتقال للـ ATM
 local function teleportToATM()
     local character = game.Players.LocalPlayer.Character
     local rootPart = character:FindFirstChild("HumanoidRootPart")
-    
     if not rootPart then return end
 
-    -- المسار الذي أعطيتني إياه (البحث عن كل المولدات)
     local spawnerFolder = workspace.Game.Jobs.CriminalATMSpawners
     local found = false
 
     for _, spawner in pairs(spawnerFolder:GetChildren()) do
-        -- التأكد من الوصول للمسار الصحيح: CriminalATMSpawner -> CriminalATM -> NormalModel -> ATM
         local atmPart = spawner:FindFirstChild("CriminalATM") 
             and spawner.CriminalATM:FindFirstChild("NormalModel") 
             and spawner.CriminalATM.NormalModel:FindFirstChild("ATM")
 
         if atmPart and atmPart:IsA("BasePart") then
-            -- التحقق إذا لم نقم بزيارته من قبل
             if not visitedATMs[atmPart] then
-                -- الانتقال
-                rootPart.CFrame = atmPart.CFrame + Vector3.new(0, 3, 0) -- الانتقال فوقه قليلاً
-                visitedATMs[atmPart] = true -- حفظه في الذاكرة
-                print("Teleported to new ATM!")
+                rootPart.CFrame = atmPart.CFrame + Vector3.new(0, 3, 0)
+                visitedATMs[atmPart] = true
                 found = true
-                break -- الخروج من الحلقة بعد الانتقال لواحد فقط
+                break
             end
         end
     end
 
     if not found then
-        TeleportBtn.Text = "No more ATMs!"
-        wait(2)
+        TeleportBtn.Text = "Finished!"
+        wait(1)
         TeleportBtn.Text = "Go to next ATM"
     end
 end
 
--- تشغيل الأزرار
+-- وظيفة الزر الجديد (Vector3)
+NewLocBtn.MouseButton1Click:Connect(function()
+    local character = game.Players.LocalPlayer.Character
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if rootPart then
+        rootPart.CFrame = CFrame.new(-2532.9, 14.9, 4034.1)
+    end
+end)
+
 TeleportBtn.MouseButton1Click:Connect(teleportToATM)
 
 ResetBtn.MouseButton1Click:Connect(function()
-    visitedATMs = {} -- مسح الذاكرة
+    visitedATMs = {}
     ResetBtn.Text = "Cleared!"
     wait(1)
-    ResetBtn.Text = "Reset"
+    ResetBtn.Text = "Reset Cache"
 end)
 
--- كود إضافي لجعل السحب يعمل بسلاسة على الجوال
+-- نظام السحب للجوال
 local UserInputService = game:GetService("UserInputService")
 local dragging, dragInput, dragStart, startPos
 
