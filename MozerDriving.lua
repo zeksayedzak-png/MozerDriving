@@ -1,119 +1,140 @@
--- إعدادات الواجهة
+-- إنشاء الواجهة البرمجية (GUI)
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
 local TeleportBtn = Instance.new("TextButton")
-local AutoBtn = Instance.new("TextButton")
-local StatusLabel = Instance.new("TextLabel") -- لعرض حالة البحث
+local ResetBtn = Instance.new("TextButton")
 local UICorner = Instance.new("UICorner")
 
-ScreenGui.Name = "UltraTP"
-ScreenGui.Parent = game.CoreGui
-ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+-- إعدادات الواجهة
+ScreenGui.Parent = game.CoreGui -- وضع السكريبت في مكان لا يحذف عند الموت
+ScreenGui.Name = "ATMScript"
 
 MainFrame.Name = "MainFrame"
 MainFrame.Parent = ScreenGui
-MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MainFrame.Position = UDim2.new(0.5, -75, 0.4, 0)
-MainFrame.Size = UDim2.new(0, 150, 0, 100)
+MainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MainFrame.Position = UDim2.new(0.5, -100, 0.5, -75) -- في منتصف الشاشة
+MainFrame.Size = UDim2.new(0, 200, 0, 150)
 MainFrame.Active = true
-MainFrame.Draggable = true -- التحريك بالإصبع
+MainFrame.Draggable = true -- تفعيل السحب (يعمل على معظم المحقنات)
 
-UICorner.Parent = MainFrame
+-- زوايا مستديرة
+local corner = Instance.new("UICorner", MainFrame)
+corner.CornerRadius = UDim.new(0, 10)
 
--- نص الحالة (Status)
-StatusLabel.Size = UDim2.new(1, 0, 0, 20)
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.Text = "Status: Idle"
-StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatusLabel.TextSize = 12
-StatusLabel.Parent = MainFrame
+-- العنوان
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "ATM"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 20
 
--- إعداد الأزرار
-TeleportBtn.Size = UDim2.new(0, 130, 0, 30)
-TeleportBtn.Position = UDim2.new(0, 10, 0, 25)
-TeleportBtn.Text = "Force TP"
+-- زر الانتقال (Teleport)
+TeleportBtn.Name = "TeleportBtn"
 TeleportBtn.Parent = MainFrame
+TeleportBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+TeleportBtn.Position = UDim2.new(0.1, 0, 0.35, 0)
+TeleportBtn.Size = UDim2.new(0.8, 0, 0.3, 0)
+TeleportBtn.Font = Enum.Font.Gotham
+TeleportBtn.Text = "Go to next ATM"
+TeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TeleportBtn.TextSize = 16
+Instance.new("UICorner", TeleportBtn)
 
-AutoBtn.Size = UDim2.new(0, 130, 0, 30)
-AutoBtn.Position = UDim2.new(0, 10, 0, 60)
-AutoBtn.Text = "Auto: OFF"
-AutoBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
-AutoBtn.Parent = MainFrame
+-- زر الريسيت (Reset)
+ResetBtn.Name = "ResetBtn"
+ResetBtn.Parent = MainFrame
+ResetBtn.BackgroundColor3 = Color3.fromRGB(255, 85, 85)
+ResetBtn.Position = UDim2.new(0.3, 0, 0.75, 0)
+ResetBtn.Size = UDim2.new(0.4, 0, 0.15, 0)
+ResetBtn.Font = Enum.Font.Gotham
+ResetBtn.Text = "Reset"
+ResetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ResetBtn.TextSize = 12
+Instance.new("UICorner", ResetBtn)
 
-local function getRing()
-    -- البحث في كل الـ Workspace حتى لو كان مخفي بسبب المسافة
-    local folder = workspace:FindFirstChild("DeliveryLocationEffects")
-    if folder then
-        local ring = folder:FindFirstChild("RingGlow")
-        if ring then return ring end
-    end
-    return nil
-end
+-- المنطق البرمجي (Logic)
+local visitedATMs = {} -- "عقل" السكريبت لحفظ الـ ATMs
 
-local function teleportSafely()
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-
-    StatusLabel.Text = "Searching..."
+local function teleportToATM()
+    local character = game.Players.LocalPlayer.Character
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
     
-    -- محاولة إيجاد الهدف
-    local target = getRing()
-    
-    if target then
-        -- إذا وجد الهدف، انتقل فوراً
-        character.HumanoidRootPart.CFrame = target.CFrame + Vector3.new(0, 7, 0)
-        StatusLabel.Text = "Success!"
-    else
-        -- الخدعة: إذا لم يجد الهدف، نقوم بعمل "انتظار" حتى يظهر في الـ Workspace
-        StatusLabel.Text = "Waiting for Spawn..."
-        
-        -- سنقوم بمراقبة المجلد مباشرة
-        local folder = workspace:WaitForChild("DeliveryLocationEffects", 5)
-        if folder then
-            local ring = folder:WaitForChild("RingGlow", 5)
-            if ring then
-                character.HumanoidRootPart.CFrame = ring.CFrame + Vector3.new(0, 7, 0)
-                StatusLabel.Text = "Success (Delayed)!"
-                return
+    if not rootPart then return end
+
+    -- المسار الذي أعطيتني إياه (البحث عن كل المولدات)
+    local spawnerFolder = workspace.Game.Jobs.CriminalATMSpawners
+    local found = false
+
+    for _, spawner in pairs(spawnerFolder:GetChildren()) do
+        -- التأكد من الوصول للمسار الصحيح: CriminalATMSpawner -> CriminalATM -> NormalModel -> ATM
+        local atmPart = spawner:FindFirstChild("CriminalATM") 
+            and spawner.CriminalATM:FindFirstChild("NormalModel") 
+            and spawner.CriminalATM.NormalModel:FindFirstChild("ATM")
+
+        if atmPart and atmPart:IsA("BasePart") then
+            -- التحقق إذا لم نقم بزيارته من قبل
+            if not visitedATMs[atmPart] then
+                -- الانتقال
+                rootPart.CFrame = atmPart.CFrame + Vector3.new(0, 3, 0) -- الانتقال فوقه قليلاً
+                visitedATMs[atmPart] = true -- حفظه في الذاكرة
+                print("Teleported to new ATM!")
+                found = true
+                break -- الخروج من الحلقة بعد الانتقال لواحد فقط
             end
         end
-        StatusLabel.Text = "Not Found in Map!"
+    end
+
+    if not found then
+        TeleportBtn.Text = "No more ATMs!"
+        wait(2)
+        TeleportBtn.Text = "Go to next ATM"
     end
 end
 
--- زر النقل اليدوي
-TeleportBtn.MouseButton1Click:Connect(teleportSafely)
+-- تشغيل الأزرار
+TeleportBtn.MouseButton1Click:Connect(teleportToATM)
 
--- نظام الـ Auto المطور
-_G.AutoMode = false
-AutoBtn.MouseButton1Click:Connect(function()
-    _G.AutoMode = not _G.AutoMode
-    if _G.AutoMode then
-        AutoBtn.Text = "Auto: ON"
-        AutoBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    else
-        AutoBtn.Text = "Auto: OFF"
-        AutoBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+ResetBtn.MouseButton1Click:Connect(function()
+    visitedATMs = {} -- مسح الذاكرة
+    ResetBtn.Text = "Cleared!"
+    wait(1)
+    ResetBtn.Text = "Reset"
+end)
+
+-- كود إضافي لجعل السحب يعمل بسلاسة على الجوال
+local UserInputService = game:GetService("UserInputService")
+local dragging, dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
     end
 end)
 
--- حلقة المراقبة المستمرة (Background Loop)
-task.spawn(function()
-    while task.wait(0.1) do
-        if _G.AutoMode then
-            local ring = getRing()
-            if ring then
-                local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-                if hrp then
-                    -- حساب المسافة: إذا كان بعيداً جداً، انتقل إليه
-                    local dist = (hrp.Position - ring.Position).Magnitude
-                    if dist > 15 then
-                        hrp.CFrame = ring.CFrame + Vector3.new(0, 7, 0)
-                        StatusLabel.Text = "Auto TP Done!"
-                    end
-                end
-            end
-        end
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
     end
 end)
